@@ -198,6 +198,18 @@ def readFastaFile(filename):
     return len(headerLines)
 
 
+def writeUniqSeqs(uSeqs):
+    import os
+    from pathlib import Path
+    foldername = os.path.dirname(fastaFile)
+
+
+    basname = Path(fastaFile).stem
+    outputfile = os.path.join(foldername, basname + "__uniqseqs" + ".txt")
+    file = open('items.txt','w')
+    file.writelines(uSeqs)
+    file.close()    
+
 def main(argv=None): # IGNORE:C0111
 
     #setlocale(LC_NUMERIC, 'no_NO')
@@ -212,7 +224,9 @@ def main(argv=None): # IGNORE:C0111
 
     #avGCPercent = calcAverageGCPercent()
     #print("average GC % = <" + str(100.0*avGCPercent) + ">")
-    getUniqueSeedSequences()
+    uniqSeqs = getUniqueSeedSequences()
+    
+    writeUniqSeqs(uniqSeqs)
 
 
 if __name__ == '__main__':

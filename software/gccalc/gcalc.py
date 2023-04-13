@@ -85,16 +85,22 @@ def parseArgs(argv):
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         parser.add_argument("-f", "--fasta_file", dest="fastafile", action="store", help="fasta file for which you want to calc GC% [default: %(default)s]")
+        parser.add_argument("-s", "--species_code", dest="speciescode", action="store", help="three character species code [default: %(default)s]")
 
         # Process arguments
         args = parser.parse_args()
 
         global fastaFile
+        global speciesCode
 
         fastaFile = args.fastafile
+        speciesCode = args.speciescode
 
         if fastaFile:
             print("fasta file is <" + fastaFile + ">")
+
+        if speciesCode:
+            print("speciesCode is <" + speciesCode + ">")
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
@@ -150,23 +156,26 @@ def readFastaFile(filename):
     sequenceLines = []
     sequence = ""
 
+    s = 0
     for fastaLine in fastaLines:
         if fastaLine[0] == '>':
-            headerLine = fastaLine[1:].strip()
-            headerLines.append(headerLine)
-            if len(headerLines) > 1:
+            if s > 0 and headerLine.startswith(speciesCode):
+                headerLines.append(headerLine)
                 sequenceLines.append(sequence)
                 sequence = ""
+            headerLine = fastaLine[1:].strip()
         else:
             sequence = sequence + fastaLine.strip()
-
-    sequenceLines.append(sequence)
+        s += 1
+    if headerLine.startswith(speciesCode):
+        headerLines.append(headerLine)
+        sequenceLines.append(sequence)
     return len(headerLines)
 
 
 def main(argv=None): # IGNORE:C0111
 
-    setlocale(LC_NUMERIC, 'no_NO')
+    #setlocale(LC_NUMERIC, 'no_NO')
     if argv is None:
         argv = sys.argv
 

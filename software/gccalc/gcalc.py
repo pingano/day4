@@ -19,6 +19,7 @@ __date__ = '2023-04-11'
 __updated__ = '2022-04-11'
 
 import sequence
+import miRNA
 
 DEBUG = 1
 TESTRUN = 0
@@ -133,6 +134,28 @@ def calcAverageGCPercent():
     return totalGCPercent/len(sequenceLines)
 
 
+
+def getUniqueSeedSequences():
+    '''
+    calculate GC percent for each sequence and return the average value
+    :return:
+    '''
+    uniqSeedSeqs = []
+    sCount = 0
+    for seqLine in sequenceLines:
+        miRSeq = miRNA.MiRNA(headerLines[sCount], seqLine)
+        thisSeedSeq = miRSeq.getSeedSequence()
+
+        if thisSeedSeq not in uniqSeedSeqs:
+            uniqSeedSeqs.append(thisSeedSeq)
+
+
+    print("found <" + str(len(uniqSeedSeqs))+ "> ")
+
+
+    return uniqSeedSeqs
+
+
 def readFastaFile(filename):
     '''
     load specified fasta file
@@ -164,6 +187,8 @@ def readFastaFile(filename):
                 sequenceLines.append(sequence)
                 sequence = ""
             headerLine = fastaLine[1:].strip()
+            sequence = ""
+            
         else:
             sequence = sequence + fastaLine.strip()
         s += 1
@@ -185,9 +210,9 @@ def main(argv=None): # IGNORE:C0111
     n = readFastaFile(fastaFile)
     print("found <" + str(n) + "> sequences")
 
-    avGCPercent = calcAverageGCPercent()
-    print("average GC % = <" + str(100.0*avGCPercent) + ">")
-
+    #avGCPercent = calcAverageGCPercent()
+    #print("average GC % = <" + str(100.0*avGCPercent) + ">")
+    getUniqueSeedSequences()
 
 
 if __name__ == '__main__':

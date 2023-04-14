@@ -13,6 +13,10 @@ from pathlib import Path
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 __all__ = []
 __version__ = 0.1
 __date__ = '2023-04-11'
@@ -87,21 +91,47 @@ def parseArgs(argv):
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         parser.add_argument("-f", "--fasta_file", dest="fastafile", action="store", help="fasta file for which you want to calc GC% [default: %(default)s]")
         parser.add_argument("-s", "--species_code", dest="speciescode", action="store", help="three character species code [default: %(default)s]")
+        parser.add_argument("-b", "--seed_begin", dest="seedbegin", action="store", help="(one based) begin nucleotide position [default: %(default)s]")
+        parser.add_argument("-e", "--seed_end", dest="seedend", action="store", help="(one based) end nucleotide position [default: %(default)s]")
 
         # Process arguments
         args = parser.parse_args()
 
         global fastaFile
         global speciesCode
+        global seedBegin
+        global seedEnd
 
         fastaFile = args.fastafile
         speciesCode = args.speciescode
+        seedBegin = int(args.seedbegin)
+        seedEnd = int(args.seedend)
 
+        # check the user specified a fasta file, if not warn and and exit
         if fastaFile:
             print("fasta file is <" + fastaFile + ">")
+        else:
+            print("you must specify a fasta file")
+            exit
 
+        # Species Code is not required
         if speciesCode:
             print("speciesCode is <" + speciesCode + ">")
+            
+        # check the user specified a start position for the seed region, if not warn and and exit
+        if seedBegin:
+            print("seed region start is <" + str(seedBegin) + ">")
+        else:
+            print("you must specify a start position for the seed region using the -b/--seed_begin flag")
+            exit
+            
+        # check the user specified a stop position for the seed region, if not warn and and exit
+        if seedEnd:
+            print("seed region stop is <" + str(seedEnd) + ">")
+        else:
+            print("you must specify a stop position for the seed region using the -e/--seed_end flag")
+            exit
+            
 
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###
@@ -137,32 +167,83 @@ def calcAverageGCPercent():
 
 def getUniqueSeedSequences():
     '''
-    calculate GC percent for each sequence and return the average value
+    get the unique seed sequences in the list of sequences loaded from the fasta file
     :return:
     '''
+    print("get unique seed sequences from sequence list")
+    print("seed region is defined to run from <" + str(seedBegin) + ">--><" + str(seedEnd) + ">")
+    
     uniqSeedSeqs = []
-    sCount = 0
+    seqNo = 0
     for seqLine in sequenceLines:
-        miRSeq = miRNA.MiRNA(headerLines[sCount], seqLine)
-        thisSeedSeq = miRSeq.getSeedSequence()
+        miRSeq = miRNA.MiRNA(headerLines[seqNo], seqLine)
+        thisSeedSeq = miRSeq.getSeedSequence(seedBegin, seedEnd)
 
         if thisSeedSeq not in uniqSeedSeqs:
             uniqSeedSeqs.append(thisSeedSeq)
 
 
-    print("found <" + str(len(uniqSeedSeqs))+ "> ")
-
-
+    print("found <" + str(len(uniqSeedSeqs))+ "> unique seed sequences")
     return uniqSeedSeqs
 
 
+
+def getNucleotideFrequencyMatrix(uniqSeedSeqs):
+    '''
+    calculate nucleotide frequencies at each position
+    '''
+    
+    lntFrequencies = []
+    n = 0
+    while n < seedEnd - seedBegin:
+        aCount = 0
+        cCount = 0
+        gCount = 0
+        tCount = 0
+        
+        for uniqSeedSeq in uniqSeedSeqs:  
+            nt = uniqSeedSeq[n]
+            if   nt == 'a' or nt == 'A':
+                aCount += 1
+            elif nt == 'c' or nt == 'C':
+                cCount += 1
+            elif nt == 'g' or nt == 'G':
+                gCount += 1
+            elif nt == 't' or nt == 'T':
+                tCount += 1                
+            elif nt == 'u' or nt == 'U':
+                tCount += 1    
+                            
+        n+=1
+        ntCount = aCount + cCount + gCount + tCount
+        lntFrequencies.append({'A': aCount/ntCount, 'C': cCount/ntCount, 'G': gCount/ntCount, 'T': tCount/ntCount})
+
+    # convert list to dataframe
+    dfNTFrequencies = pd.DataFrame(lntFrequencies)
+    
+    return dfNTFrequencies
+
+    
+
+def generateLogoPlot(dfNTFrequencies):
+    import logomaker as lm
+    import matplotlib.pyplot as plt
+    
+    logo = lm.Logo(dfNTFrequencies, font_name = 'Arial Rounded MT Bold')
+    foldername = os.path.dirname(fastaFile)
+    basename = Path(fastaFile).stem    
+    outputpngfile = os.path.join(foldername, basename + "__uniqseeds_logoplt" + ".png")       
+    plt.savefig(outputpngfile)
+    
+
 def readFastaFile(filename):
     '''
-    load specified fasta file
+    load specified fasta file and store header and sequence as entries in two lists
     :param self:
     :return:
     '''
 
+    print("load sequences from fasta file <" + fastaFile + ">")
     global headerLines
     global sequenceLines
 
@@ -197,22 +278,36 @@ def readFastaFile(filename):
         sequenceLines.append(sequence)
     return len(headerLines)
 
+    print("loaded <" + str(s) + "> sequences and kept <"+ str(len(headerLines)) + "> with species code [" + speciesCode + "]")
+
 
 def writeUniqSeqs(uSeqs):
+    '''
+    write unique seed regions to an output file
+    '''
+    print("write unique seed sequences to fasta file")
     import os
     from pathlib import Path
+    
     foldername = os.path.dirname(fastaFile)
-
-
-    basname = Path(fastaFile).stem
-    outputfile = os.path.join(foldername, basname + "__uniqseqs" + ".txt")
-    file = open('items.txt','w')
-    file.writelines(uSeqs)
+    basename = Path(fastaFile).stem    
+    outputfafile = os.path.join(foldername, basename + "__uniqseeds" + ".fa")
+    
+    print("output fasta file is <" + outputfafile + ">")
+    file = open(outputfafile,'w')
+    s = 1
+    for uSeq in uSeqs:
+        file.writelines(">uniqseed_" + str(s) + os.linesep)
+        file.writelines(uSeq + os.linesep)
+        s+=1
     file.close()    
+    
+    
+    
+    
 
 def main(argv=None): # IGNORE:C0111
 
-    #setlocale(LC_NUMERIC, 'no_NO')
     if argv is None:
         argv = sys.argv
 
@@ -220,13 +315,17 @@ def main(argv=None): # IGNORE:C0111
     parseArgs(argv)
     #initLogger(md5String)
     n = readFastaFile(fastaFile)
-    print("found <" + str(n) + "> sequences")
+    uSeqs = getUniqueSeedSequences()
+    
+
 
     #avGCPercent = calcAverageGCPercent()
     #print("average GC % = <" + str(100.0*avGCPercent) + ">")
-    uniqSeqs = getUniqueSeedSequences()
+
     
-    writeUniqSeqs(uniqSeqs)
+    writeUniqSeqs(uSeqs)
+    dfNTFrequencies = getNucleotideFrequencyMatrix(uSeqs)
+    generateLogoPlot(dfNTFrequencies)
 
 
 if __name__ == '__main__':

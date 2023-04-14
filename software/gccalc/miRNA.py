@@ -4,5 +4,8 @@ class MiRNA(Sequence):
         Sequence.__init__(self, h, s)
 
 
-    def getSeedSequence(self):
-        return self._sequence[1:8]
+    def getSeedSequence(self, begin, end):
+        '''
+        extract the seed sequence. parameters are one-based positions
+        '''
+        return self._sequence[begin-1:end]

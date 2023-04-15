@@ -89,23 +89,15 @@ def parseArgs(argv):
     try:
         # Setup argument parser
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
-        parser.add_argument("-f", "--fasta_file", dest="fastafile", action="store", help="fasta file for which you want to calc GC% [default: %(default)s]")
-        parser.add_argument("-s", "--species_code", dest="speciescode", action="store", help="three character species code [default: %(default)s]")
-        parser.add_argument("-b", "--seed_begin", dest="seedbegin", action="store", help="(one based) begin nucleotide position [default: %(default)s]")
-        parser.add_argument("-e", "--seed_end", dest="seedend", action="store", help="(one based) end nucleotide position [default: %(default)s]")
+        parser.add_argument("-m", "--max_number", dest="maxnumber", action="store", help="max value to calculate Fibonacci number [default: %(default)s]")
 
         # Process arguments
         args = parser.parse_args()
 
-        global fastaFile
-        global speciesCode
-        global seedBegin
-        global seedEnd
+        global maxNumber
 
-        fastaFile = args.fastafile
-        speciesCode = args.speciescode
-        seedBegin = int(args.seedbegin)
-        seedEnd = int(args.seedend)
+        maxNumber = args.maxnumber
+
 
         # check the user specified a fasta file, if not warn and and exit
         if fastaFile:
@@ -275,7 +267,7 @@ def readFastaFile(filename):
         s += 1
     if headerLine.startswith(speciesCode):
         headerLines.append(headerLine)
-        sequenceLines.append(sequence)
+        sequenceLines.append(sequence)        
     return len(headerLines)
 
     print("loaded <" + str(s) + "> sequences and kept <"+ str(len(headerLines)) + "> with species code [" + speciesCode + "]")
